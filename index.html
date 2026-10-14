@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Low Poly Forest - 3D Scene Viewer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+    body, html { width: 100%; height: 100%; overflow: hidden; background: #1a222c; font-family: system-ui, sans-serif; color: #fff; }
+    #canvas-container { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
+
+    /* Top UI Bar */
+    #ui-bar {
+      position: absolute; top: 12px; left: 12px; right: 12px;
+      display: flex; justify-content: space-between; align-items: center;
+      pointer-events: none; z-index: 10; flex-wrap: wrap; gap: 8px;
+    }
+    .panel {
+      background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(8px);
+      padding: 10px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.15);
+      pointer-events: auto; display: flex; align-items: center; gap: 10px; font-size: 13px;
+    }
+    .btn {
+      background: #3b82f6; color: #fff; border: none; padding: 7px 12px;
+      border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px;
+    }
+    .btn:hover { background: #2563eb; }
+    input[type="file"] { display: none; }
+
+    /* Mobile / On-Screen Movement Controls */
+    #move-pad {
+      position: absolute; bottom: 24px; left: 24px;
+      display: grid; grid-template-columns: repeat(3, 48px); grid-template-rows: repeat(2, 48px);
+      gap: 6px; z-index: 10;
+    }
+    .pad-btn {
+      background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(255,255,255,0.2);
+      color: #fff; border-radius: 10px; font-size: 16px; font-weight: bold;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; touch-action: none;
+    }
+    .pad-btn:active { background: #3b82f6; }
+
+    /* Status Overlay */
+    #status {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      background: rgba(15, 23, 42, 0.9); padding: 20px 28px; border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.2); text-align: center; z-index: 20;
+    }
+    #status.hidden { display: none; }
+  </style>
+
+  <!-- Three.js Import Map -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+
+  <div id="canvas-container"></div>
+
+  <div id="ui-bar">
+    <div class="panel">
+      <label class="btn" for="glb-input">Load .GLB File</label>
+      <input type="file" id="glb-input" accept=".glb,.gltf" />
+      <button class="btn" id="reset-cam" style="background:#475569;">Reset View</button>
+    </div>
+    <div class="panel">
+      <span><b>Look:</b> Drag / Touch &nbsp;|&nbsp; <b>Move:</b> WASD / Arrows / D-Pad</span>
+    </div>
+  </div>
+
+  <div id="status">
+    <p style="margin-bottom: 12px; font-size: 15px;">Select or drag & drop your <b>Low Poly Forest (.glb)</b> file to render</p>
+    <label class="btn" for="glb-input">Choose .GLB File</label>
+  </div>
+
+  <!-- On-Screen D-Pad for Walking/Flying Around -->
+  <div id="move-pad">
+    <div class="pad-btn" data-key="KeyQ">Up</div>
+    <div class="pad-btn" data-key="KeyW">▲</div>
+    <div class="pad-btn" data-key="KeyE">Dn</div>
+    <div class="pad-btn" data-key="KeyA">◀</div>
+    <div class="pad-btn" data-key="KeyS">▼</div>
+    <div class="pad-btn" data-key="KeyD">▶</div>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
+    import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+
+    const container = document.getElementById('canvas-container');
+    const statusBox = document.getElementById('status');
+
+    // 1. Scene, Camera & Renderer
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x87ceeb);
+    scene.fog = new THREE.FogExp2(0x87ceeb, 0.04);
+
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.05, 500);
+    camera.position.set(0, 2, 5);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.1;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    container.appendChild(renderer.domElement);
+
+    // 2. Orbit Controls
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.06;
+    controls.maxDistance = 100;
+
+    // 3. Lighting
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x3d5229, 1.2);
+    hemiLight.position.set(0, 20, 0);
+    scene.add(hemiLight);
+
+    const dirLight = new THREE.DirectionalLight(0xfff4e0, 2.2);
+    dirLight.position.set(8, 15, 10);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.set(2048, 2048);
+    dirLight.shadow.bias = -0.0005;
+    scene.add(dirLight);
+
+    // 4. Configure GLTFLoader with KTX2 (KHR_texture_basisu) & Meshopt (EXT_meshopt_compression)
+    const ktx2Loader = new KTX2Loader()
+      .setTranscoderPath('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/basis/')
+      .detectSupport(renderer);
+
+    const gltfLoader = new GLTFLoader();
+    gltfLoader.setKTX2Loader(ktx2Loader);
+    gltfLoader.setMeshoptDecoder(MeshoptDecoder);
+
+    let currentModel = null;
+    let defaultCamPos = new THREE.Vector3(0, 2, 5);
+    let defaultTarget = new THREE.Vector3(0, 0, 0);
+    let moveSpeed = 2.5;
+
+    function loadGLBFromURL(url) {
+      statusBox.classList.remove('hidden');
+      statusBox.innerHTML = '<p>Decompressing KTX2 textures & Meshopt geometry...</p>';
+
+      gltfLoader.load(
+        url,
+        (gltf) => {
+          if (currentModel) scene.remove(currentModel);
+          currentModel = gltf.scene;
+
+          currentModel.traverse((child) => {
+            if (child.isMesh) {
+              child.castShadow = true;
+              child.receiveShadow = true;
+            }
+          });
+
+          scene.add(currentModel);
+
+          // Center and frame the model automatically
+          const box = new THREE.Box3().setFromObject(currentModel);
+          const center = box.getCenter(new THREE.Vector3());
+          const size = box.getSize(new THREE.Vector3());
+          const maxDim = Math.max(size.x, size.y, size.z);
+
+          defaultTarget.copy(center);
+          defaultCamPos.set(center.x + maxDim * 0.7, center.y + maxDim * 0.4, center.z + maxDim * 0.7);
+          moveSpeed = maxDim * 0.4; // Scale walking speed to model size
+
+          resetView();
+          statusBox.classList.add('hidden');
+        },
+        undefined,
+        (err) => {
+          console.error(err);
+          statusBox.innerHTML = `<p style="color:#f87171;">Error loading model: ${err.message}</p>`;
+        }
+      );
+    }
+
+    function resetView() {
+      camera.position.copy(defaultCamPos);
+      controls.target.copy(defaultTarget);
+      controls.update();
+    }
+
+    document.getElementById('reset-cam').addEventListener('click', resetView);
+
+    // 5. File Input & Drag-and-Drop Handlers
+    document.getElementById('glb-input').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) loadGLBFromURL(URL.createObjectURL(file));
+    });
+
+    window.addEventListener('dragover', (e) => e.preventDefault());
+    window.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const file = e.dataTransfer.files[0];
+      if (file) loadGLBFromURL(URL.createObjectURL(file));
+    });
+
+    // Try auto-loading if a file named "scene.glb" is in the same folder
+    fetch('./scene.glb', { method: 'HEAD' })
+      .then((res) => { if (res.ok) loadGLBFromURL('./scene.glb'); })
+      .catch(() => {});
+
+    // 6. Walk / Fly Around Movement Logic (WASD + Arrows + Touch D-Pad)
+    const keys = {};
+    window.addEventListener('keydown', (e) => { keys[e.code] = true; });
+    window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+
+    document.querySelectorAll('.pad-btn').forEach((btn) => {
+      const code = btn.dataset.key;
+      btn.addEventListener('pointerdown', (e) => { e.preventDefault(); keys[code] = true; });
+      btn.addEventListener('pointerup', () => { keys[code] = false; });
+      btn.addEventListener('pointerleave', () => { keys[code] = false; });
+    });
+
+    const clock = new THREE.Clock();
+    const forward = new THREE.Vector3();
+    const right = new THREE.Vector3();
+    const moveVec = new THREE.Vector3();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const delta = clock.getDelta();
+
+      // Calculate horizontal forward & right vectors relative to camera view
+      camera.getWorldDirection(forward);
+      forward.y = 0;
+      forward.normalize();
+      right.crossVectors(forward, camera.up).normalize();
+
+      moveVec.set(0, 0, 0);
+      if (keys['KeyW'] || keys['ArrowUp']) moveVec.add(forward);
+      if (keys['KeyS'] || keys['ArrowDown']) moveVec.sub(forward);
+      if (keys['KeyD'] || keys['ArrowRight']) moveVec.add(right);
+      if (keys['KeyA'] || keys['ArrowLeft']) moveVec.sub(right);
+      if (keys['KeyQ']) moveVec.y += 1;
+      if (keys['KeyE']) moveVec.y -= 1;
+
+      if (moveVec.lengthSq() > 0) {
+        moveVec.normalize().multiplyScalar(moveSpeed * delta);
+        camera.position.add(moveVec);
+        controls.target.add(moveVec);
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    // 7. Responsive Resize
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
