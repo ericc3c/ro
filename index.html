@@ -2,60 +2,245 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>Low Poly Forest - 3D Scene Viewer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Ghibli Forest - Wind, Plants & FPS Explorer</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
-    body, html { width: 100%; height: 100%; overflow: hidden; background: #1a222c; font-family: system-ui, sans-serif; color: #fff; }
-    #canvas-container { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #87CEEB;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      touch-action: none;
+    }
+    #canvas-container {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
 
-    /* Top UI Bar */
-    #ui-bar {
-      position: absolute; top: 12px; left: 12px; right: 12px;
-      display: flex; justify-content: space-between; align-items: center;
-      pointer-events: none; z-index: 10; flex-wrap: wrap; gap: 8px;
+    /* Top HUD */
+    #hud {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      right: 10px;
+      z-index: 20;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      pointer-events: none;
     }
-    .panel {
-      background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(8px);
-      padding: 10px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.15);
-      pointer-events: auto; display: flex; align-items: center; gap: 10px; font-size: 13px;
+    .hud-btn, .hud-control {
+      pointer-events: auto;
+      background: rgba(255, 253, 245, 0.92);
+      color: #2c4a3e;
+      border: 1px solid #d5cbbc;
+      padding: 7px 11px;
+      border-radius: 10px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
-    .btn {
-      background: #3b82f6; color: #fff; border: none; padding: 7px 12px;
-      border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px;
+    .hud-control input[type="range"] {
+      width: 75px;
+      accent-color: #3b6e57;
     }
-    .btn:hover { background: #2563eb; }
-    input[type="file"] { display: none; }
+    #file-input {
+      display: none;
+    }
+    #status-msg {
+      color: #fff;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.75);
+      font-size: 0.75rem;
+      font-weight: 600;
+      background: rgba(0,0,0,0.25);
+      padding: 4px 8px;
+      border-radius: 6px;
+    }
 
-    /* Mobile / On-Screen Movement Controls */
-    #move-pad {
-      position: absolute; bottom: 24px; left: 24px;
-      display: grid; grid-template-columns: repeat(3, 48px); grid-template-rows: repeat(2, 48px);
-      gap: 6px; z-index: 10;
+    /* Start / Pause Overlay */
+    #ui-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background: radial-gradient(circle, rgba(255,252,240,0.35) 0%, rgba(25,50,75,0.65) 100%);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      z-index: 30;
+      padding: 16px;
+      transition: opacity 0.35s ease;
     }
-    .pad-btn {
-      background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(255,255,255,0.2);
-      color: #fff; border-radius: 10px; font-size: 16px; font-weight: bold;
-      display: flex; align-items: center; justify-content: center;
-      cursor: pointer; touch-action: none;
+    #ui-overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
     }
-    .pad-btn:active { background: #3b82f6; }
+    .menu-card {
+      background: rgba(255, 253, 245, 0.95);
+      padding: 26px 22px;
+      border-radius: 20px;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.28);
+      text-align: center;
+      border: 2px solid #e2d9c5;
+      max-width: 410px;
+      width: 100%;
+    }
+    .menu-card h1 {
+      color: #2c4a3e;
+      font-size: 1.7rem;
+      margin-bottom: 8px;
+    }
+    .menu-card p {
+      color: #5c7065;
+      font-size: 0.9rem;
+      line-height: 1.45;
+      margin-bottom: 16px;
+    }
+    .controls-list {
+      text-align: left;
+      background: #f2ede2;
+      padding: 12px 14px;
+      border-radius: 12px;
+      margin-bottom: 18px;
+      font-size: 0.82rem;
+      color: #3d5245;
+    }
+    .controls-list div {
+      margin: 5px 0;
+    }
+    .key {
+      display: inline-block;
+      background: #fff;
+      border: 1px solid #cbbba0;
+      border-radius: 5px;
+      padding: 1px 6px;
+      font-weight: bold;
+      font-size: 0.73rem;
+      color: #2c4a3e;
+      box-shadow: 0 2px 0 #cbbba0;
+      margin-right: 4px;
+    }
+    #start-btn {
+      background: #3b6e57;
+      color: white;
+      border: none;
+      padding: 14px 34px;
+      font-size: 1.05rem;
+      font-weight: bold;
+      border-radius: 30px;
+      cursor: pointer;
+      box-shadow: 0 6px 15px rgba(59, 110, 87, 0.4);
+      width: 100%;
+      max-width: 230px;
+    }
+    #start-btn:active {
+      transform: scale(0.97);
+    }
 
-    /* Status Overlay */
-    #status {
-      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      background: rgba(15, 23, 42, 0.9); padding: 20px 28px; border-radius: 12px;
-      border: 1px solid rgba(255,255,255,0.2); text-align: center; z-index: 20;
+    /* Crosshair */
+    #crosshair {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 8px;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.85);
+      border: 1.5px solid rgba(44, 74, 62, 0.75);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      z-index: 5;
     }
-    #status.hidden { display: none; }
+
+    /* Mobile Touch Controls */
+    #mobile-controls {
+      position: absolute;
+      bottom: 22px;
+      left: 0;
+      width: 100%;
+      padding: 0 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      pointer-events: none;
+      z-index: 15;
+    }
+    #joystick-zone {
+      width: 115px;
+      height: 115px;
+      background: rgba(255, 255, 255, 0.25);
+      border: 2px solid rgba(255, 255, 255, 0.55);
+      border-radius: 50%;
+      position: relative;
+      pointer-events: auto;
+      touch-action: none;
+      backdrop-filter: blur(2px);
+    }
+    #joystick-knob {
+      width: 46px;
+      height: 46px;
+      background: rgba(255, 253, 245, 0.9);
+      border: 2px solid #3b6e57;
+      border-radius: 50%;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.22);
+    }
+    .action-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      pointer-events: auto;
+    }
+    .touch-btn {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: rgba(255, 253, 245, 0.85);
+      border: 2px solid #3b6e57;
+      color: #2c4a3e;
+      font-weight: bold;
+      font-size: 0.76rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.22);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      touch-action: none;
+    }
+    .touch-btn:active, .touch-btn.active {
+      background: #3b6e57;
+      color: white;
+    }
   </style>
 
-  <!-- Three.js Import Map -->
   <script type="importmap">
     {
       "imports": {
-        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
       }
     }
   </script>
@@ -63,210 +248,906 @@
 <body>
 
   <div id="canvas-container"></div>
+  <div id="crosshair"></div>
 
-  <div id="ui-bar">
-    <div class="panel">
-      <label class="btn" for="glb-input">Load .GLB File</label>
-      <input type="file" id="glb-input" accept=".glb,.gltf" />
-      <button class="btn" id="reset-cam" style="background:#475569;">Reset View</button>
+  <!-- Top HUD -->
+  <div id="hud">
+    <label for="file-input" class="hud-btn">📂 Load .GLB File</label>
+    <input type="file" id="file-input" accept=".glb,.gltf" />
+    <button id="mute-btn" class="hud-btn">🔊 Sound: ON</button>
+    <div class="hud-control">
+      <span>📏 Size:</span>
+      <input type="range" id="size-slider" min="0.4" max="3.2" step="0.1" value="1.3" />
     </div>
-    <div class="panel">
-      <span><b>Look:</b> Drag / Touch &nbsp;|&nbsp; <b>Move:</b> WASD / Arrows / D-Pad</span>
+    <div class="hud-control">
+      <span>🍃 Wind:</span>
+      <input type="range" id="wind-slider" min="0.2" max="2.5" step="0.1" value="1.2" />
+    </div>
+    <span id="status-msg">Replica of low_poly_forest.glb Active</span>
+  </div>
+
+  <!-- Touch Controls -->
+  <div id="mobile-controls">
+    <div id="joystick-zone">
+      <div id="joystick-knob"></div>
+    </div>
+    <div class="action-buttons">
+      <button id="sprint-btn" class="touch-btn">RUN</button>
+      <button id="jump-btn" class="touch-btn">JUMP</button>
     </div>
   </div>
 
-  <div id="status">
-    <p style="margin-bottom: 12px; font-size: 15px;">Select or drag & drop your <b>Low Poly Forest (.glb)</b> file to render</p>
-    <label class="btn" for="glb-input">Choose .GLB File</label>
-  </div>
-
-  <!-- On-Screen D-Pad for Walking/Flying Around -->
-  <div id="move-pad">
-    <div class="pad-btn" data-key="KeyQ">Up</div>
-    <div class="pad-btn" data-key="KeyW">▲</div>
-    <div class="pad-btn" data-key="KeyE">Dn</div>
-    <div class="pad-btn" data-key="KeyA">◀</div>
-    <div class="pad-btn" data-key="KeyS">▼</div>
-    <div class="pad-btn" data-key="KeyD">▶</div>
+  <!-- Start Overlay -->
+  <div id="ui-overlay">
+    <div class="menu-card">
+      <h1>🌸 Ghibli Forest</h1>
+      <p>Calibrated to your <b>low_poly_forest.glb</b> scale with root-anchored wind shaders on all plants, bushes, and blossom trees.</p>
+      <div class="controls-list">
+        <div>📱 <b>Mobile:</b> Left Joystick to walk, drag screen to look</div>
+        <div>💻 <b>Desktop:</b> <span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span> Walk, <span class="key">SPACE</span> Jump</div>
+        <div>📏 <b>Size & Wind:</b> Adjust sliders at the top anytime</div>
+      </div>
+      <button id="start-btn" type="button">Enter World</button>
+    </div>
   </div>
 
   <script type="module">
     import * as THREE from 'three';
-    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
     import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-    import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
-    import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+
+    // ====================================================
+    // 1. SCALE & SCENE CONSTANTS (MATCHED TO YOUR .GLB)
+    // ====================================================
+    // In low_poly_forest.glb:
+    // - Water is at Y: 0.12 to 0.35
+    // - Island ground is X: [-3.3, 3.0], Z: [-0.17, 5.76], Y: [0.32, 1.49]
+    // - Small plants (tripo_node_b6b5512f) are ~0.11 units tall (Y: 0.98 to 1.11)
+    // - Tall bushes & blossom trees are ~0.9 to 1.1 units tall (Y: 0.38 to 1.94)
+    // Scaling the GLB by 8x makes trees ~8m tall, small plants ~0.85m, and player eye height ~1.3m!
+    const MODEL_SCALE = 8.0;
+    const WATER_LEVEL = 0.26 * MODEL_SCALE;
 
     const container = document.getElementById('canvas-container');
-    const statusBox = document.getElementById('status');
-
-    // 1. Scene, Camera & Renderer
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x87ceeb);
-    scene.fog = new THREE.FogExp2(0x87ceeb, 0.04);
+    scene.fog = new THREE.FogExp2(0xd8efe6, 0.0065);
 
-    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.05, 500);
-    camera.position.set(0, 2, 5);
+    const camera = new THREE.PerspectiveCamera(68, window.innerWidth / window.innerHeight, 0.05, 500);
+    // Spawn right on the main island looking toward the blossom trees and Z=3.3..4.8 plants
+    camera.position.set(0, 1.1 * MODEL_SCALE + 1.3, 0.6 * MODEL_SCALE);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.1;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.12;
     container.appendChild(renderer.domElement);
 
-    // 2. Orbit Controls
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.06;
-    controls.maxDistance = 100;
+    // ====================================================
+    // 2. GHIBLI SKY & WARM SUNLIGHT
+    // ====================================================
+    const skyGeo = new THREE.SphereGeometry(260, 32, 32);
+    const skyMat = new THREE.ShaderMaterial({
+      side: THREE.BackSide,
+      depthWrite: false,
+      uniforms: {
+        topColor: { value: new THREE.Color(0x4396d4) },
+        midColor: { value: new THREE.Color(0xa5e2be) },
+        bottomColor: { value: new THREE.Color(0xfff0d4) },
+        sunDir: { value: new THREE.Vector3(0.45, 0.5, -0.7).normalize() }
+      },
+      vertexShader: `
+        varying vec3 vWorldPos;
+        void main() {
+          vec4 wp = modelMatrix * vec4(position, 1.0);
+          vWorldPos = wp.xyz;
+          gl_Position = projectionMatrix * viewMatrix * wp;
+        }
+      `,
+      fragmentShader: `
+        uniform vec3 topColor;
+        uniform vec3 midColor;
+        uniform vec3 bottomColor;
+        uniform vec3 sunDir;
+        varying vec3 vWorldPos;
+        void main() {
+          vec3 dir = normalize(vWorldPos);
+          float h = clamp(dir.y, 0.0, 1.0);
+          vec3 col = mix(bottomColor, midColor, smoothstep(0.0, 0.35, h));
+          col = mix(col, topColor, smoothstep(0.35, 0.9, h));
+          float sunAmt = max(dot(dir, sunDir), 0.0);
+          col += vec3(1.0, 0.92, 0.7) * pow(sunAmt, 40.0) * 0.75;
+          col += vec3(1.0, 0.98, 0.92) * smoothstep(0.996, 0.999, sunAmt);
+          gl_FragColor = vec4(col, 1.0);
+        }
+      `
+    });
+    scene.add(new THREE.Mesh(skyGeo, skyMat));
 
-    // 3. Lighting
-    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x3d5229, 1.2);
-    hemiLight.position.set(0, 20, 0);
+    const hemiLight = new THREE.HemisphereLight(0xe8f9ff, 0x5c8038, 1.25);
     scene.add(hemiLight);
 
-    const dirLight = new THREE.DirectionalLight(0xfff4e0, 2.2);
-    dirLight.position.set(8, 15, 10);
-    dirLight.castShadow = true;
-    dirLight.shadow.mapSize.set(2048, 2048);
-    dirLight.shadow.bias = -0.0005;
-    scene.add(dirLight);
+    const sunLight = new THREE.DirectionalLight(0xfff4d6, 2.3);
+    sunLight.position.set(35, 50, -45);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.width = 2048;
+    sunLight.shadow.mapSize.height = 2048;
+    sunLight.shadow.camera.near = 1;
+    sunLight.shadow.camera.far = 160;
+    const d = 45;
+    sunLight.shadow.camera.left = -d;
+    sunLight.shadow.camera.right = d;
+    sunLight.shadow.camera.top = d;
+    sunLight.shadow.camera.bottom = -d;
+    sunLight.shadow.bias = -0.0005;
+    scene.add(sunLight);
 
-    // 4. Configure GLTFLoader with KTX2 (KHR_texture_basisu) & Meshopt (EXT_meshopt_compression)
-    const ktx2Loader = new KTX2Loader()
-      .setTranscoderPath('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/basis/')
-      .detectSupport(renderer);
+    // ====================================================
+    // 3. SHARED WIND & WATER UNIFORMS + SHADERS
+    // ====================================================
+    const globalUniforms = {
+      uTime: { value: 0 },
+      uWindStrength: { value: 1.2 }
+    };
+
+    // Moving Ghibli Water Shader (replaces water_water_0 .. water_water_18)
+    const ghibliWaterMaterial = new THREE.ShaderMaterial({
+      uniforms: {
+        uTime: globalUniforms.uTime,
+        uShallowColor: { value: new THREE.Color(0x47c9b6) },
+        uDeepColor: { value: new THREE.Color(0x14658a) },
+        uSkyColor: { value: new THREE.Color(0xcff5ed) }
+      },
+      transparent: true,
+      side: THREE.DoubleSide,
+      vertexShader: `
+        uniform float uTime;
+        varying vec3 vWorldPos;
+        varying float vWaveHeight;
+
+        void main() {
+          vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+          float w1 = sin(worldPosition.x * 0.55 + uTime * 1.9) * 0.07;
+          float w2 = cos(worldPosition.z * 0.70 + uTime * 1.5) * 0.06;
+          float w3 = sin((worldPosition.x + worldPosition.z) * 1.2 - uTime * 2.4) * 0.035;
+          float wave = w1 + w2 + w3;
+          worldPosition.y += wave;
+          vWaveHeight = wave;
+          vWorldPos = worldPosition.xyz;
+          gl_Position = projectionMatrix * viewMatrix * worldPosition;
+        }
+      `,
+      fragmentShader: `
+        uniform float uTime;
+        uniform vec3 uShallowColor;
+        uniform vec3 uDeepColor;
+        uniform vec3 uSkyColor;
+        varying vec3 vWorldPos;
+        varying float vWaveHeight;
+
+        float hash(vec2 p) {
+          return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+        }
+        float noise(vec2 p) {
+          vec2 i = floor(p);
+          vec2 f = fract(p);
+          f = f * f * (3.0 - 2.0 * f);
+          return mix(mix(hash(i + vec2(0.0,0.0)), hash(i + vec2(1.0,0.0)), f.x),
+                     mix(hash(i + vec2(0.0,1.0)), hash(i + vec2(1.0,1.0)), f.x), f.y);
+        }
+
+        void main() {
+          vec2 flowUv = vWorldPos.xz * 0.45 + vec2(uTime * 0.25, -uTime * 0.18);
+          float n1 = noise(flowUv * 2.2);
+          float n2 = noise(flowUv * 4.5 - vec2(uTime * 0.4));
+          float combined = (n1 + n2 * 0.5) / 1.5;
+
+          float dist = length(vWorldPos.xz);
+          vec3 waterCol = mix(uShallowColor, uDeepColor, clamp(dist / 65.0, 0.0, 1.0));
+
+          float rippleBand = smoothstep(0.60, 0.65, combined + vWaveHeight * 1.5);
+          float foamSparkle = step(0.75, combined + vWaveHeight * 1.8);
+
+          vec3 viewDir = normalize(cameraPosition - vWorldPos);
+          float fresnel = pow(1.0 - max(dot(viewDir, vec3(0.0, 1.0, 0.0)), 0.0), 3.0);
+
+          waterCol = mix(waterCol, uSkyColor, fresnel * 0.45);
+          waterCol = mix(waterCol, vec3(0.88, 0.99, 0.96), rippleBand * 0.38);
+          waterCol = mix(waterCol, vec3(1.0, 1.0, 1.0), foamSparkle * 0.8);
+
+          gl_FragColor = vec4(waterCol, 0.90);
+        }
+      `
+    });
+
+    // Background ocean plane so water extends to the horizon
+    const bgWaterGeo = new THREE.PlaneGeometry(400, 400, 80, 80);
+    bgWaterGeo.rotateX(-Math.PI / 2);
+    const bgWater = new THREE.Mesh(bgWaterGeo, ghibliWaterMaterial);
+    bgWater.position.y = WATER_LEVEL - 0.05;
+    scene.add(bgWater);
+
+    /**
+     * Injects a root-anchored vertex wind animation into any Plant, Bush, Blossom, or Tree Material.
+     * Uses the mesh's local bounding box (minY -> maxY) so the roots stay planted in the ground
+     * while the upper leaves/petals/branches bend and flutter in the wind.
+     */
+    function applyWindToMaterial(material, minY, maxY, swayAmount = 0.12, flutterAmount = 0.03) {
+      const clonedMat = material.clone();
+      clonedMat.side = THREE.DoubleSide;
+
+      clonedMat.onBeforeCompile = (shader) => {
+        shader.uniforms.uTime = globalUniforms.uTime;
+        shader.uniforms.uWindStrength = globalUniforms.uWindStrength;
+        shader.uniforms.uMinY = { value: minY };
+        shader.uniforms.uMaxY = { value: Math.max(minY + 0.05, maxY) };
+        shader.uniforms.uSway = { value: swayAmount };
+        shader.uniforms.uFlutter = { value: flutterAmount };
+
+        shader.vertexShader = `
+          uniform float uTime;
+          uniform float uWindStrength;
+          uniform float uMinY;
+          uniform float uMaxY;
+          uniform float uSway;
+          uniform float uFlutter;
+        ` + shader.vertexShader;
+
+        shader.vertexShader = shader.vertexShader.replace(
+          '#include <begin_vertex>',
+          `
+          #include <begin_vertex>
+          // Normalized height from root (0.0) to tip (1.0)
+          float hFactor = clamp((position.y - uMinY) / (uMaxY - uMinY), 0.0, 1.0);
+          // Smooth curve so base stays planted and tips bend more
+          float bend = pow(hFactor, 1.45) * uWindStrength;
+
+          vec4 wPos = modelMatrix * vec4(position, 1.0);
+          float mainGust = sin(uTime * 2.2 + wPos.x * 0.25 + wPos.z * 0.25) 
+                         + cos(uTime * 1.4 + wPos.x * 0.15) * 0.5;
+          float leafFlutter = sin(uTime * 6.5 + position.x * 12.0 + position.y * 12.0 + position.z * 12.0);
+
+          transformed.x += (mainGust * uSway + leafFlutter * uFlutter) * bend;
+          transformed.z += (mainGust * uSway * 0.65 - leafFlutter * uFlutter) * bend;
+          transformed.y -= abs(mainGust) * uSway * 0.15 * bend;
+          `
+        );
+      };
+      clonedMat.needsUpdate = true;
+      return clonedMat;
+    }
+
+    // ====================================================
+    // 4. PROCESS & ENHANCE YOUR .GLB ENVIRONMENT
+    // ====================================================
+    const walkableMeshes = [];
+    let activeEnvironment = new THREE.Group();
+    scene.add(activeEnvironment);
+
+    function processLoadedGLB(gltfScene) {
+      scene.remove(activeEnvironment);
+      walkableMeshes.length = 0;
+
+      const wrapper = new THREE.Group();
+      gltfScene.scale.setScalar(MODEL_SCALE);
+      wrapper.add(gltfScene);
+
+      gltfScene.traverse((child) => {
+        if (!child.isMesh) return;
+
+        // 1. CRITICAL FIX: Compute missing vertex normals in low_poly_forest.glb
+        if (child.geometry) {
+          if (!child.geometry.attributes.normal) {
+            child.geometry.computeVertexNormals();
+          }
+          child.geometry.computeBoundingBox();
+        }
+
+        child.castShadow = true;
+        child.receiveShadow = true;
+
+        const matName = (child.material && child.material.name) ? child.material.name.toLowerCase() : '';
+        const bbox = child.geometry.boundingBox;
+        const minY = bbox ? bbox.min.y : 0;
+        const maxY = bbox ? bbox.max.y : 1;
+
+        // 2. Water Meshes (water_water to water_water_18)
+        if (matName.includes('water')) {
+          child.material = ghibliWaterMaterial;
+          child.castShadow = false;
+        }
+        // 3. Cherry Blossom Canopies (all_petal_a* and all_petal_b*)
+        else if (matName.includes('petal')) {
+          const isTypeA = matName.includes('petal_a');
+          const baseCol = isTypeA ? new THREE.Color(0xffb3c6) : new THREE.Color(0xe85d75);
+          const emiCol = isTypeA ? new THREE.Color(0x4a1c28) : new THREE.Color(0x42101a);
+
+          const ghibliPetalMat = new THREE.MeshStandardMaterial({
+            color: baseCol,
+            emissive: emiCol,
+            emissiveIntensity: 0.28,
+            roughness: 0.55,
+            metalness: 0.0
+          });
+          // Apply billowy wind sway + petal flutter
+          child.material = applyWindToMaterial(ghibliPetalMat, minY, maxY, 0.08, 0.018);
+        }
+        // 4. Tree Trunks & Branches (all_bark)
+        else if (matName.includes('bark')) {
+          child.material.roughness = 0.85;
+          // Gentle synchronized branch sway
+          child.material = applyWindToMaterial(child.material, minY, maxY, 0.035, 0.003);
+        }
+        // 5. Plants, Bushes & Garden Clusters (tripo_node_*)
+        else if (matName.includes('tripo_node')) {
+          const plantMat = child.material.clone();
+          plantMat.roughness = 0.55;
+          // Boost plant vibrancy with subtle Ghibli warm-green subsurface glow
+          plantMat.emissive = new THREE.Color(0x1f3d14);
+          plantMat.emissiveIntensity = 0.22;
+
+          // Small plants (tripo_node_b6b5512f) vs tall bushes (tripo_node_4d7a8a2f / 81bb436a)
+          const plantHeight = maxY - minY;
+          const sway = plantHeight < 0.25 ? 0.035 : 0.09;
+          const flutter = plantHeight < 0.25 ? 0.012 : 0.025;
+
+          child.material = applyWindToMaterial(plantMat, minY, maxY, sway, flutter);
+        }
+        // 6. Ground & Slopes (grnd_grnd, slope_slope)
+        else if (matName.includes('grnd') || matName.includes('slope')) {
+          child.material.roughness = 0.8;
+          walkableMeshes.push(child);
+        } else {
+          walkableMeshes.push(child);
+        }
+      });
+
+      // Add extra Ghibli swaying grass & wildflowers across the island's Z=0..5.5 ground
+      addSwayingMeadowDetails(wrapper);
+
+      activeEnvironment = wrapper;
+      scene.add(activeEnvironment);
+
+      // Place player on the island ground
+      camera.position.set(0, 1.15 * MODEL_SCALE + playerHeight, 0.8 * MODEL_SCALE);
+      yaw = Math.PI; // Face toward Z+ where the tree canopy & tripo_node plants are
+    }
+
+    // Adds lush swaying Ghibli grass blades & glowing blossoms around the island and plant beds
+    function addSwayingMeadowDetails(targetGroup) {
+      const grassCount = 3500;
+      const bladeGeo = new THREE.ConeGeometry(0.06, 0.55, 3);
+      bladeGeo.translate(0, 0.275, 0);
+
+      let grassMat = new THREE.MeshStandardMaterial({
+        color: 0x68b842,
+        emissive: 0x1a3810,
+        emissiveIntensity: 0.2,
+        roughness: 0.65
+      });
+      grassMat = applyWindToMaterial(grassMat, 0, 0.55, 0.18, 0.04);
+
+      const grassInst = new THREE.InstancedMesh(bladeGeo, grassMat, grassCount);
+      const dummy = new THREE.Object3D();
+      const down = new THREE.Vector3(0, -1, 0);
+      const rc = new THREE.Raycaster();
+
+      // Update world matrices so raycasting hits the scaled ground
+      targetGroup.updateMatrixWorld(true);
+
+      let count = 0;
+      for (let i = 0; i < grassCount * 2 && count < grassCount; i++) {
+        // Match exact X: [-2.8, 2.6], Z: [0.1, 5.4] island bounds from low_poly_forest.glb
+        const rx = ((Math.random() - 0.5) * 5.2) * MODEL_SCALE;
+        const rz = (Math.random() * 5.2 + 0.1) * MODEL_SCALE;
+
+        rc.set(new THREE.Vector3(rx, 25, rz), down);
+        const hits = rc.intersectObjects(walkableMeshes, true);
+        if (hits.length > 0 && hits[0].point.y > WATER_LEVEL + 0.8) {
+          dummy.position.copy(hits[0].point);
+          dummy.rotation.y = Math.random() * Math.PI * 2;
+          const s = 0.65 + Math.random() * 0.9;
+          dummy.scale.set(s, s, s);
+          dummy.updateMatrix();
+          grassInst.setMatrixAt(count++, dummy.matrix);
+        }
+      }
+      grassInst.count = count;
+      grassInst.receiveShadow = true;
+      targetGroup.add(grassInst);
+    }
+
+    // ====================================================
+    // 5. BUILT-IN REPLICA OF YOUR .GLB (FALLBACK PREVIEW)
+    // ====================================================
+    function buildReplicaOfUserGLB() {
+      const rawGroup = new THREE.Group();
+
+      // 1. Ground (grnd_grnd & slope_slope: X[-3.1, 2.9], Z[-0.1, 5.7], Y[0.3, 1.35])
+      const gGeo = new THREE.PlaneGeometry(6.2, 6.0, 50, 50);
+      gGeo.rotateX(-Math.PI / 2);
+      gGeo.translate(-0.1, 0, 2.8);
+      const pos = gGeo.attributes.position;
+      const cols = [];
+      for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const z = pos.getZ(i);
+        const nx = x / 3.1;
+        const nz = (z - 2.8) / 3.0;
+        const radial = Math.max(0, 1 - Math.sqrt(nx * nx + nz * nz));
+        const h = 0.15 + radial * 0.95 + Math.sin(x * 1.5) * Math.cos(z * 1.2) * 0.08;
+        pos.setY(i, h);
+        const c = h < 0.45 ? new THREE.Color(0xc2a878) : new THREE.Color(0x5da63f);
+        cols.push(c.r, c.g, c.b);
+      }
+      gGeo.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
+      const gMesh = new THREE.Mesh(gGeo, new THREE.MeshStandardMaterial({ vertexColors: true, name: 'grnd_grnd' }));
+      rawGroup.add(gMesh);
+
+      // 2. Water Tiles (water_water: X[-9.3, 9.6], Z[-4.9, 8.4], Y=0.26)
+      const wGeo = new THREE.PlaneGeometry(19.0, 13.4, 60, 60);
+      wGeo.rotateX(-Math.PI / 2);
+      wGeo.translate(0.15, 0.26, 1.75);
+      const wMesh = new THREE.Mesh(wGeo, new THREE.MeshStandardMaterial({ name: 'water_water' }));
+      rawGroup.add(wMesh);
+
+      // 3. Blossom Tree (all_bark & all_petal_a / all_petal_b at X[-2.4, 2.3], Y[0.4, 1.55], Z[0.3, 3.2])
+      const barkMat = new THREE.MeshStandardMaterial({ color: 0x6b4c35, name: 'all_bark' });
+      const trunkGeo = new THREE.CylinderGeometry(0.08, 0.16, 0.75, 8);
+      trunkGeo.translate(0, 1.15, 1.8);
+      rawGroup.add(new THREE.Mesh(trunkGeo, barkMat));
+
+      const petalMatA = new THREE.MeshStandardMaterial({ color: 0xffb3c6, name: 'all_petal_a' });
+      const petalMatB = new THREE.MeshStandardMaterial({ color: 0xe85d75, name: 'all_petal_b' });
+
+      const puffs = [
+        [0, 1.55, 1.8, 0.65, petalMatA],
+        [-0.55, 1.42, 1.5, 0.5, petalMatB],
+        [0.55, 1.45, 2.0, 0.52, petalMatA],
+        [-0.2, 1.48, 2.3, 0.48, petalMatB],
+        [0.3, 1.38, 1.3, 0.45, petalMatA]
+      ];
+      puffs.forEach(([px, py, pz, r, mat]) => {
+        const pGeo = new THREE.IcosahedronGeometry(r, 2);
+        pGeo.scale(1.2, 0.65, 1.2);
+        pGeo.translate(px, py, pz);
+        rawGroup.add(new THREE.Mesh(pGeo, mat));
+      });
+
+      // 4. Tall Bushes (tripo_node_4d7a8a2f & 81bb436a at Z: 3.9..4.9, Y: 0.98..1.85)
+      const tallPlantMat = new THREE.MeshStandardMaterial({ color: 0x3b8c3b, name: 'tripo_node_4d7a8a2f' });
+      const bushCoords = [
+        [-1.1, 1.15, 4.2, 0.35],
+        [-1.8, 1.15, 4.5, 0.40],
+        [-2.2, 1.12, 4.1, 0.38],
+        [-0.2, 1.15, 4.1, 0.36]
+      ];
+      bushCoords.forEach(([bx, by, bz, br]) => {
+        const bGeo = new THREE.DodecahedronGeometry(br, 1);
+        bGeo.scale(1, 1.4, 1);
+        bGeo.translate(bx, by, bz);
+        rawGroup.add(new THREE.Mesh(bGeo, tallPlantMat));
+      });
+
+      // 5. 18 Small Plants (tripo_node_b6b5512f at X[-2.27, -1.67], Y[0.98, 1.11], Z[3.09, 3.57])
+      const smallPlantMat = new THREE.MeshStandardMaterial({ color: 0x55b848, name: 'tripo_node_b6b5512f' });
+      for (let i = 0; i < 18; i++) {
+        const sx = -2.25 + (i % 6) * 0.11;
+        const sz = 3.12 + Math.floor(i / 6) * 0.18;
+        const sGeo = new THREE.ConeGeometry(0.06, 0.13, 5);
+        sGeo.translate(sx, 0.98, sz);
+        rawGroup.add(new THREE.Mesh(sGeo, smallPlantMat));
+      }
+
+      processLoadedGLB(rawGroup);
+    }
+
+    // Build initial replica, then attempt to auto-load ./low_poly_forest.glb if on localhost
+    let playerHeight = 1.3;
+    buildReplicaOfUserGLB();
 
     const gltfLoader = new GLTFLoader();
-    gltfLoader.setKTX2Loader(ktx2Loader);
-    gltfLoader.setMeshoptDecoder(MeshoptDecoder);
+    const statusMsg = document.getElementById('status-msg');
 
-    let currentModel = null;
-    let defaultCamPos = new THREE.Vector3(0, 2, 5);
-    let defaultTarget = new THREE.Vector3(0, 0, 0);
-    let moveSpeed = 2.5;
+    // Auto-attempt loading low_poly_forest.glb from same directory
+    gltfLoader.load(
+      './low_poly_forest.glb',
+      (gltf) => {
+        processLoadedGLB(gltf.scene);
+        statusMsg.textContent = 'Loaded: low_poly_forest.glb';
+      },
+      undefined,
+      () => {
+        // Keep replica active until user selects their .glb file via button
+      }
+    );
 
-    function loadGLBFromURL(url) {
-      statusBox.classList.remove('hidden');
-      statusBox.innerHTML = '<p>Decompressing KTX2 textures & Meshopt geometry...</p>';
+    // Manual File Picker for .GLB
+    document.getElementById('file-input').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const url = URL.createObjectURL(file);
+      statusMsg.textContent = 'Loading .GLB...';
 
       gltfLoader.load(
         url,
         (gltf) => {
-          if (currentModel) scene.remove(currentModel);
-          currentModel = gltf.scene;
-
-          currentModel.traverse((child) => {
-            if (child.isMesh) {
-              child.castShadow = true;
-              child.receiveShadow = true;
-            }
-          });
-
-          scene.add(currentModel);
-
-          // Center and frame the model automatically
-          const box = new THREE.Box3().setFromObject(currentModel);
-          const center = box.getCenter(new THREE.Vector3());
-          const size = box.getSize(new THREE.Vector3());
-          const maxDim = Math.max(size.x, size.y, size.z);
-
-          defaultTarget.copy(center);
-          defaultCamPos.set(center.x + maxDim * 0.7, center.y + maxDim * 0.4, center.z + maxDim * 0.7);
-          moveSpeed = maxDim * 0.4; // Scale walking speed to model size
-
-          resetView();
-          statusBox.classList.add('hidden');
+          processLoadedGLB(gltf.scene);
+          statusMsg.textContent = `Loaded: ${file.name}`;
         },
         undefined,
         (err) => {
           console.error(err);
-          statusBox.innerHTML = `<p style="color:#f87171;">Error loading model: ${err.message}</p>`;
+          statusMsg.textContent = 'Error loading .GLB';
         }
       );
+    });
+
+    // Live Sliders for Player Size & Wind Speed
+    document.getElementById('size-slider').addEventListener('input', (e) => {
+      playerHeight = parseFloat(e.target.value);
+    });
+    document.getElementById('wind-slider').addEventListener('input', (e) => {
+      globalUniforms.uWindStrength.value = parseFloat(e.target.value);
+    });
+
+    // ====================================================
+    // 6. FALLING CHERRY BLOSSOM PETALS IN THE WIND
+    // ====================================================
+    const petalCount = 400;
+    const petalGeo = new THREE.BufferGeometry();
+    const petalPositions = new Float32Array(petalCount * 3);
+    const petalSpeeds = [];
+    for (let i = 0; i < petalCount; i++) {
+      petalPositions[i * 3] = (Math.random() - 0.5) * 45;
+      petalPositions[i * 3 + 1] = Math.random() * 14 + 2;
+      petalPositions[i * 3 + 2] = (Math.random() - 0.5) * 45 + 15;
+      petalSpeeds.push({
+        vy: 0.6 + Math.random() * 0.65,
+        vx: 0.9 + Math.random() * 0.7,
+        phase: Math.random() * Math.PI * 2
+      });
+    }
+    petalGeo.setAttribute('position', new THREE.BufferAttribute(petalPositions, 3));
+    const petalParticles = new THREE.Points(
+      petalGeo,
+      new THREE.PointsMaterial({ color: 0xffccd7, size: 0.16, transparent: true, opacity: 0.9 })
+    );
+    scene.add(petalParticles);
+
+    // ====================================================
+    // 7. WEB AUDIO API: WIND & WATER SYNTHESIZER
+    // ====================================================
+    let audioCtx = null;
+    let windFilter = null;
+    let windGain = null;
+    let masterGain = null;
+    let isMuted = false;
+
+    function initAudio() {
+      try {
+        if (!audioCtx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          audioCtx = new AudioContext();
+
+          masterGain = audioCtx.createGain();
+          masterGain.gain.value = 0.85;
+          masterGain.connect(audioCtx.destination);
+
+          const bufferSize = audioCtx.sampleRate * 3;
+          const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+          const output = noiseBuffer.getChannelData(0);
+          let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+          for (let i = 0; i < bufferSize; i++) {
+            const white = Math.random() * 2 - 1;
+            b0 = 0.99886 * b0 + white * 0.0555179;
+            b1 = 0.99332 * b1 + white * 0.0750759;
+            b2 = 0.96900 * b2 + white * 0.1538520;
+            b3 = 0.86650 * b3 + white * 0.3104856;
+            b4 = 0.55000 * b4 + white * 0.5329522;
+            b5 = -0.7616 * b5 - white * 0.0168980;
+            output[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.04;
+            b6 = white * 0.115926;
+          }
+
+          const windSource = audioCtx.createBufferSource();
+          windSource.buffer = noiseBuffer;
+          windSource.loop = true;
+
+          windFilter = audioCtx.createBiquadFilter();
+          windFilter.type = 'bandpass';
+          windFilter.frequency.value = 340;
+          windFilter.Q.value = 3.5;
+
+          windGain = audioCtx.createGain();
+          windGain.gain.value = 0.38;
+
+          windSource.connect(windFilter);
+          windFilter.connect(windGain);
+          windGain.connect(masterGain);
+          windSource.start(0);
+
+          const waterSource = audioCtx.createBufferSource();
+          waterSource.buffer = noiseBuffer;
+          waterSource.loop = true;
+
+          const waterFilter = audioCtx.createBiquadFilter();
+          waterFilter.type = 'lowpass';
+          waterFilter.frequency.value = 650;
+
+          const waterGain = audioCtx.createGain();
+          waterGain.gain.value = 0.12;
+
+          waterSource.connect(waterFilter);
+          waterFilter.connect(waterGain);
+          waterGain.connect(masterGain);
+          waterSource.start(0);
+        }
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+      } catch (err) {
+        console.warn('Audio warning:', err);
+      }
     }
 
-    function resetView() {
-      camera.position.copy(defaultCamPos);
-      controls.target.copy(defaultTarget);
-      controls.update();
+    document.getElementById('mute-btn').addEventListener('click', (e) => {
+      isMuted = !isMuted;
+      if (masterGain) masterGain.gain.value = isMuted ? 0 : 0.85;
+      e.target.textContent = isMuted ? '🔇 Sound: OFF' : '🔊 Sound: ON';
+    });
+
+    // ====================================================
+    // 8. MOBILE + DESKTOP FPS CONTROLS
+    // ====================================================
+    const uiOverlay = document.getElementById('ui-overlay');
+    const startBtn = document.getElementById('start-btn');
+    let isPlaying = false;
+
+    let yaw = Math.PI;
+    let pitch = 0;
+    const euler = new THREE.Euler(0, 0, 0, 'YXZ');
+
+    function enterWorld(e) {
+      if (e) e.preventDefault();
+      initAudio();
+      isPlaying = true;
+      uiOverlay.classList.add('hidden');
+      if (renderer.domElement.requestPointerLock) {
+        try { renderer.domElement.requestPointerLock(); } catch (_) {}
+      }
     }
 
-    document.getElementById('reset-cam').addEventListener('click', resetView);
+    startBtn.addEventListener('click', enterWorld);
+    startBtn.addEventListener('touchend', enterWorld);
 
-    // 5. File Input & Drag-and-Drop Handlers
-    document.getElementById('glb-input').addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (file) loadGLBFromURL(URL.createObjectURL(file));
+    document.addEventListener('mousemove', (e) => {
+      if (document.pointerLockElement === renderer.domElement) {
+        yaw -= e.movementX * 0.0022;
+        pitch -= e.movementY * 0.0022;
+        pitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, pitch));
+      }
     });
 
-    window.addEventListener('dragover', (e) => e.preventDefault());
-    window.addEventListener('drop', (e) => {
-      e.preventDefault();
-      const file = e.dataTransfer.files[0];
-      if (file) loadGLBFromURL(URL.createObjectURL(file));
+    let lookTouchId = null;
+    let lastLookX = 0;
+    let lastLookY = 0;
+
+    renderer.domElement.addEventListener('touchstart', (e) => {
+      if (!isPlaying) return;
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        if (lookTouchId === null) {
+          lookTouchId = t.identifier;
+          lastLookX = t.clientX;
+          lastLookY = t.clientY;
+        }
+      }
+    }, { passive: false });
+
+    renderer.domElement.addEventListener('touchmove', (e) => {
+      if (!isPlaying) return;
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        if (t.identifier === lookTouchId) {
+          const dx = t.clientX - lastLookX;
+          const dy = t.clientY - lastLookY;
+          lastLookX = t.clientX;
+          lastLookY = t.clientY;
+          yaw -= dx * 0.0055;
+          pitch -= dy * 0.0055;
+          pitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, pitch));
+        }
+      }
+    }, { passive: false });
+
+    function endLookTouch(e) {
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === lookTouchId) lookTouchId = null;
+      }
+    }
+    renderer.domElement.addEventListener('touchend', endLookTouch);
+    renderer.domElement.addEventListener('touchcancel', endLookTouch);
+
+    // Virtual Joystick
+    const joystickZone = document.getElementById('joystick-zone');
+    const joystickKnob = document.getElementById('joystick-knob');
+    let joyTouchId = null;
+    let joyMoveX = 0;
+    let joyMoveY = 0;
+
+    function updateJoystick(clientX, clientY) {
+      const rect = joystickZone.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      const maxRadius = rect.width / 2 - 16;
+
+      let dx = clientX - centerX;
+      let dy = clientY - centerY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist > maxRadius) {
+        dx = (dx / dist) * maxRadius;
+        dy = (dy / dist) * maxRadius;
+      }
+      joystickKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+      joyMoveX = dx / maxRadius;
+      joyMoveY = -dy / maxRadius;
+    }
+
+    joystickZone.addEventListener('touchstart', (e) => {
+      e.stopPropagation();
+      const t = e.changedTouches[0];
+      joyTouchId = t.identifier;
+      updateJoystick(t.clientX, t.clientY);
+    }, { passive: false });
+
+    joystickZone.addEventListener('touchmove', (e) => {
+      e.stopPropagation();
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        if (t.identifier === joyTouchId) updateJoystick(t.clientX, t.clientY);
+      }
+    }, { passive: false });
+
+    function resetJoystick(e) {
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === joyTouchId) {
+          joyTouchId = null;
+          joyMoveX = 0;
+          joyMoveY = 0;
+          joystickKnob.style.transform = 'translate(-50%, -50%)';
+        }
+      }
+    }
+    joystickZone.addEventListener('touchend', resetJoystick);
+    joystickZone.addEventListener('touchcancel', resetJoystick);
+
+    const keys = { KeyW: false, KeyA: false, KeyS: false, KeyD: false, ShiftLeft: false };
+    let velocityY = 0;
+    let isGrounded = false;
+    let touchSprint = false;
+    let walkBobTimer = 0;
+
+    function triggerJump() {
+      if (isGrounded) {
+        velocityY = 5.5;
+        isGrounded = false;
+      }
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (keys.hasOwnProperty(e.code)) keys[e.code] = true;
+      if (e.code === 'Space') triggerJump();
+    });
+    window.addEventListener('keyup', (e) => {
+      if (keys.hasOwnProperty(e.code)) keys[e.code] = false;
     });
 
-    // Try auto-loading if a file named "scene.glb" is in the same folder
-    fetch('./scene.glb', { method: 'HEAD' })
-      .then((res) => { if (res.ok) loadGLBFromURL('./scene.glb'); })
-      .catch(() => {});
-
-    // 6. Walk / Fly Around Movement Logic (WASD + Arrows + Touch D-Pad)
-    const keys = {};
-    window.addEventListener('keydown', (e) => { keys[e.code] = true; });
-    window.addEventListener('keyup', (e) => { keys[e.code] = false; });
-
-    document.querySelectorAll('.pad-btn').forEach((btn) => {
-      const code = btn.dataset.key;
-      btn.addEventListener('pointerdown', (e) => { e.preventDefault(); keys[code] = true; });
-      btn.addEventListener('pointerup', () => { keys[code] = false; });
-      btn.addEventListener('pointerleave', () => { keys[code] = false; });
+    const jumpBtn = document.getElementById('jump-btn');
+    const sprintBtn = document.getElementById('sprint-btn');
+    jumpBtn.addEventListener('touchstart', (e) => { e.stopPropagation(); triggerJump(); });
+    jumpBtn.addEventListener('click', triggerJump);
+    sprintBtn.addEventListener('touchstart', (e) => {
+      e.stopPropagation();
+      touchSprint = !touchSprint;
+      sprintBtn.classList.toggle('active', touchSprint);
     });
 
+    const raycaster = new THREE.Raycaster();
+    const downVector = new THREE.Vector3(0, -1, 0);
+
+    // ====================================================
+    // 9. ANIMATION & GAME LOOP
+    // ====================================================
     const clock = new THREE.Clock();
-    const forward = new THREE.Vector3();
-    const right = new THREE.Vector3();
-    const moveVec = new THREE.Vector3();
 
     function animate() {
       requestAnimationFrame(animate);
-      const delta = clock.getDelta();
+      const dt = Math.min(clock.getDelta(), 0.1);
+      const elapsed = clock.getElapsedTime();
 
-      // Calculate horizontal forward & right vectors relative to camera view
-      camera.getWorldDirection(forward);
-      forward.y = 0;
-      forward.normalize();
-      right.crossVectors(forward, camera.up).normalize();
+      globalUniforms.uTime.value = elapsed;
 
-      moveVec.set(0, 0, 0);
-      if (keys['KeyW'] || keys['ArrowUp']) moveVec.add(forward);
-      if (keys['KeyS'] || keys['ArrowDown']) moveVec.sub(forward);
-      if (keys['KeyD'] || keys['ArrowRight']) moveVec.add(right);
-      if (keys['KeyA'] || keys['ArrowLeft']) moveVec.sub(right);
-      if (keys['KeyQ']) moveVec.y += 1;
-      if (keys['KeyE']) moveVec.y -= 1;
+      // Blow falling sakura petals in the wind
+      const windMult = globalUniforms.uWindStrength.value;
+      const pArr = petalGeo.attributes.position.array;
+      for (let i = 0; i < petalCount; i++) {
+        const s = petalSpeeds[i];
+        pArr[i * 3] += (Math.sin(elapsed * 1.5 + s.phase) * s.vx + 0.8 * windMult) * dt;
+        pArr[i * 3 + 1] -= s.vy * dt;
+        pArr[i * 3 + 2] += (Math.cos(elapsed * 1.2 + s.phase) * 0.4 + 0.3 * windMult) * dt;
 
-      if (moveVec.lengthSq() > 0) {
-        moveVec.normalize().multiplyScalar(moveSpeed * delta);
-        camera.position.add(moveVec);
-        controls.target.add(moveVec);
+        if (pArr[i * 3 + 1] < WATER_LEVEL) {
+          pArr[i * 3] = (Math.random() - 0.5) * 45;
+          pArr[i * 3 + 1] = 14 + Math.random() * 5;
+          pArr[i * 3 + 2] = (Math.random() - 0.5) * 45 + 15;
+        }
+      }
+      petalGeo.attributes.position.needsUpdate = true;
+
+      // Modulate Wind Sound with Wind Slider & Gusts
+      if (audioCtx && windFilter && windGain) {
+        const gust = (Math.sin(elapsed * 0.5) + Math.sin(elapsed * 1.2) * 0.5 + 1.5) / 3.0;
+        windFilter.frequency.setTargetAtTime(200 + gust * 380 * windMult, audioCtx.currentTime, 0.1);
+        windGain.gain.setTargetAtTime(Math.min(0.8, (0.2 + gust * 0.3) * windMult), audioCtx.currentTime, 0.1);
       }
 
-      controls.update();
+      if (isPlaying) {
+        euler.set(pitch, yaw, 0);
+        camera.quaternion.setFromEuler(euler);
+
+        const isSprinting = keys.ShiftLeft || touchSprint;
+        // Movement speed calibrated to the 8x scaled island
+        const speed = (isSprinting ? 7.2 : 3.8) * (playerHeight / 1.3);
+
+        const kbForward = (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0);
+        const kbStrafe = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0);
+
+        const forwardInput = Math.max(-1, Math.min(1, kbForward + joyMoveY));
+        const strafeInput = Math.max(-1, Math.min(1, kbStrafe + joyMoveX));
+
+        const forwardVec = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
+        const rightVec = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
+
+        camera.position.addScaledVector(forwardVec, forwardInput * speed * dt);
+        camera.position.addScaledVector(rightVec, strafeInput * speed * dt);
+
+        velocityY -= 15.0 * dt;
+        camera.position.y += velocityY * dt;
+
+        // Raycast downward from above the player's head to find ground height
+        raycaster.set(new THREE.Vector3(camera.position.x, camera.position.y + 8, camera.position.z), downVector);
+        const hits = raycaster.intersectObjects(walkableMeshes, true);
+
+        let groundY = WATER_LEVEL;
+        if (hits.length > 0) {
+          groundY = Math.max(WATER_LEVEL, hits[0].point.y);
+        }
+
+        const isMoving = Math.abs(forwardInput) > 0.05 || Math.abs(strafeInput) > 0.05;
+        if (isMoving && isGrounded) {
+          walkBobTimer += dt * (isSprinting ? 12 : 8);
+        } else {
+          walkBobTimer = 0;
+        }
+        const bobOffset = Math.sin(walkBobTimer) * 0.045 * (playerHeight / 1.3);
+
+        if (camera.position.y <= groundY + playerHeight + bobOffset) {
+          camera.position.y = groundY + playerHeight + bobOffset;
+          velocityY = 0;
+          isGrounded = true;
+        }
+      }
+
       renderer.render(scene, camera);
     }
-    animate();
 
-    // 7. Responsive Resize
     window.addEventListener('resize', () => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
     });
+
+    animate();
   </script>
 </body>
 </html>
